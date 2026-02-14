@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Red Team Server Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="../static/css/styles.css">
+</head>
+<body>
+    <div class="nav-bar" style="background-color: #0d0d0d; padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid #333;">
+        <a href="/" style="color: #00ff00; text-decoration: none; margin-right: 20px; padding: 5px 10px;" class="active">
+            <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+        <a href="./logs.html" style="color: #00ff00; text-decoration: none; margin-right: 20px; padding: 5px 10px;">
+            <i class="bi bi-journal-text"></i> Logs
+        </a>
+        <a href="../templates/settings.html" style="color: #00ff00; text-decoration: none; margin-right: 20px; padding: 5px 10px;">
+            <i class="bi bi-gear"></i> Settings
+        </a>
+        <span style="float: right; color: #00ff00;">
+            <i class="bi bi-wifi"></i> <span id="connectionStatus">Connected</span>
+        </span>
+    </div>
+    <nav class="navbar navbar-dark bg-black">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">
+                <i class="bi bi-terminal-fill me-2" style="color: #00ff00;"></i>
+                Red Team Server Control Panel
+            </span>
+            <div>
+                <span class="text-muted me-3" id="connectionStatus">
+                    <i class="bi bi-wifi"></i> WebSocket: Connected
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- Status Cards -->
+        <div class="row">
+            <div class="col-md-3">
+                <div class="server-card">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5><i class="bi bi-hdd-network me-2"></i>TCP Server</h5>
+                        <span id="tcpStatus" class="status-indicator status-stopped"></span>
+                    </div>
+                    <div class="mb-2">
+                        <small class="text-muted">Port</small>
+                        <input type="number" id="tcpPort" class="form-control form-control-sm bg-dark text-light border-secondary" value="4444">
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted">Bind Address</small>
+                        <input type="text" id="tcpHost" class="form-control form-control-sm bg-dark text-light border-secondary" value="0.0.0.0">
+                    </div>
+                    <div class="btn-group w-100">
+                        <button class="control-btn" onclick="startTCP()" id="tcpStartBtn">
+                            <i class="bi bi-play-fill"></i> Start
+                        </button>
+                        <button class="control-btn" onclick="stopTCP()" id="tcpStopBtn" disabled>
+                            <i class="bi bi-stop-fill"></i> Stop
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="server-card">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5><i class="bi bi-wifi me-2"></i>UDP Server</h5>
+                        <span id="udpStatus" class="status-indicator status-stopped"></span>
+                    </div>
+                    <div class="mb-2">
+                        <small class="text-muted">Port</small>
+                        <input type="number" id="udpPort" class="form-control form-control-sm bg-dark text-light border-secondary" value="4445">
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted">Bind Address</small>
+                        <input type="text" id="udpHost" class="form-control form-control-sm bg-dark text-light border-secondary" value="0.0.0.0">
+                    </div>
+                    <div class="btn-group w-100">
+                        <button class="control-btn" onclick="startUDP()" id="udpStartBtn">
+                            <i class="bi bi-play-fill"></i> Start
+                        </button>
+                        <button class="control-btn" onclick="stopUDP()" id="udpStopBtn" disabled>
+                            <i class="bi bi-stop-fill"></i> Stop
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="server-card">
+                    <h5 class="mb-3"><i class="bi bi-graph-up me-2"></i>Live Statistics</h5>
+                    <div class="row">
+                        <div class="col-4 text-center">
+                            <div class="stats-number" id="totalConnections">0</div>
+                            <div class="stats-label">TOTAL CONNECTIONS</div>
+                        </div>
+                        <div class="col-4 text-center">
+                            <div class="stats-number" id="totalMessages">0</div>
+                            <div class="stats-label">MESSAGES RECEIVED</div>
+                        </div>
+                        <div class="col-4 text-center">
+                            <div class="stats-number" id="uptime">0s</div>
+                            <div class="stats-label">UPTIME</div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <button class="control-btn btn-sm" onclick="stopAll()">
+                            <i class="bi bi-stop-circle"></i> Stop All Servers
+                        </button>
+                        <button class="control-btn btn-sm" onclick="clearLogs()">
+                            <i class="bi bi-eraser"></i> Clear History
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Logs -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="terminal-window">
+                    <div class="terminal-header">
+                        <i class="bi bi-terminal me-2"></i>
+                        Live Packet Monitor
+                        <span class="float-end">
+                            <i class="bi bi-download" onclick="exportLogs()" style="cursor: pointer;"></i>
+                        </span>
+                    </div>
+                    <div id="logContainer" style="height: 400px; overflow-y: auto;">
+                        <!-- Logs will be inserted here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Template for log entries -->
+    <template id="logTemplate">
+        <div class="log-entry">
+            <span class="log-timestamp"></span>
+            <span class="log-message"></span>
+        </div>
+    </template>
+
+    <script>
+        // Server-Sent Events connection
+        const eventSource = new EventSource('/api/stream');
+        
+        eventSource.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            if (data.type === 'messages') {
+                data.data.forEach(msg => addLogEntry(msg));
+            }
+        };
+
+        // Auto-refresh status every 2 seconds
+        setInterval(updateStatus, 2000);
+
+        async function updateStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const status = await response.json();
+                
+                // Update TCP status
+                const tcpIndicator = document.getElementById('tcpStatus');
+                const tcpStart = document.getElementById('tcpStartBtn');
+                const tcpStop = document.getElementById('tcpStopBtn');
+                
+                if (status.tcp_running) {
+                    tcpIndicator.className = 'status-indicator status-running';
+                    tcpStart.disabled = true;
+                    tcpStop.disabled = false;
+                } else {
+                    tcpIndicator.className = 'status-indicator status-stopped';
+                    tcpStart.disabled = false;
+                    tcpStop.disabled = true;
+                }
+                
+                // Update UDP status
+                const udpIndicator = document.getElementById('udpStatus');
+                const udpStart = document.getElementById('udpStartBtn');
+                const udpStop = document.getElementById('udpStopBtn');
+                
+                if (status.udp_running) {
+                    udpIndicator.className = 'status-indicator status-running';
+                    udpStart.disabled = true;
+                    udpStop.disabled = false;
+                } else {
+                    udpIndicator.className = 'status-indicator status-stopped';
+                    udpStart.disabled = false;
+                    udpStop.disabled = true;
+                }
+                
+                // Update statistics
+                document.getElementById('totalConnections').textContent = status.total_connections || 0;
+                document.getElementById('totalMessages').textContent = status.messages || 0;
+                
+            } catch (error) {
+                console.error('Error updating status:', error);
+            }
+        }
+
+        async function startTCP() {
+            const host = document.getElementById('tcpHost').value;
+            const port = document.getElementById('tcpPort').value;
+            
+            try {
+                const response = await fetch('/api/start/tcp', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({host, port})
+                });
+                const result = await response.json();
+                if (result.success) {
+                    addLogEntry({timestamp: 'NOW', message: result.message, type: 'success'});
+                }
+            } catch (error) {
+                console.error('Error starting TCP:', error);
+            }
+        }
+
+        async function stopTCP() {
+            try {
+                const response = await fetch('/api/stop/tcp', {method: 'POST'});
+                const result = await response.json();
+                addLogEntry({timestamp: 'NOW', message: result.message, type: 'warning'});
+            } catch (error) {
+                console.error('Error stopping TCP:', error);
+            }
+        }
+
+        async function startUDP() {
+            const host = document.getElementById('udpHost').value;
+            const port = document.getElementById('udpPort').value;
+            
+            try {
+                const response = await fetch('/api/start/udp', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({host, port})
+                });
+                const result = await response.json();
+                if (result.success) {
+                    addLogEntry({timestamp: 'NOW', message: result.message, type: 'success'});
+                }
+            } catch (error) {
+                console.error('Error starting UDP:', error);
+            }
+        }
+
+        async function stopUDP() {
+            try {
+                const response = await fetch('/api/stop/udp', {method: 'POST'});
+                const result = await response.json();
+                addLogEntry({timestamp: 'NOW', message: result.message, type: 'warning'});
+            } catch (error) {
+                console.error('Error stopping UDP:', error);
+            }
+        }
+
+        async function stopAll() {
+            try {
+                const response = await fetch('/api/stop/all', {method: 'POST'});
+                const result = await response.json();
+                addLogEntry({timestamp: 'NOW', message: result.message, type: 'warning'});
+            } catch (error) {
+                console.error('Error stopping all:', error);
+            }
+        }
+
+        async function clearLogs() {
+            try {
+                const response = await fetch('/api/clear', {method: 'POST'});
+                const result = await response.json();
+                document.getElementById('logContainer').innerHTML = '';
+                addLogEntry({timestamp: 'NOW', message: result.message, type: 'info'});
+            } catch (error) {
+                console.error('Error clearing logs:', error);
+            }
+        }
+
+        function addLogEntry(entry) {
+            const container = document.getElementById('logContainer');
+            const template = document.getElementById('logTemplate');
+            const clone = template.content.cloneNode(true);
+            
+            const logEntry = clone.querySelector('.log-entry');
+            logEntry.querySelector('.log-timestamp').textContent = `[${entry.timestamp}]`;
+            logEntry.querySelector('.log-message').textContent = entry.message;
+            
+            // Add type-specific class
+            if (entry.type) {
+                logEntry.classList.add(`log-type-${entry.type}`);
+            }
+            
+            container.appendChild(clone);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Load initial messages
+        async function loadInitialMessages() {
+            try {
+                const response = await fetch('/api/messages?limit=50');
+                const data = await response.json();
+                data.messages.forEach(msg => addLogEntry(msg));
+            } catch (error) {
+                console.error('Error loading messages:', error);
+            }
+        }
+
+        // Start initial load
+        loadInitialMessages();
+        updateStatus();
+    </script>
+</body>
+</html>
