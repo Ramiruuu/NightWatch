@@ -1,0 +1,95 @@
+:root {
+            --dark-bg: #1a1a1a;
+            --darker-bg: #0d0d0d;
+            --terminal-green: #00ff00;
+            --terminal-amber: #ffb86c;
+            --terminal-red: #ff5555;
+        }
+        
+        body {
+            background-color: var(--dark-bg);
+            color: #e0e0e0;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .terminal-window {
+            background-color: var(--darker-bg);
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .terminal-header {
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+            color: var(--terminal-green);
+        }
+        
+        .log-entry {
+            border-bottom: 1px solid #222;
+            padding: 5px 0;
+            font-size: 14px;
+        }
+        
+        .log-timestamp {
+            color: #666;
+            margin-right: 10px;
+        }
+        
+        .log-message {
+            color: #fff;
+        }
+        
+        .log-type-info { color: #66ccff; }
+        .log-type-success { color: var(--terminal-green); }
+        .log-type-error { color: var(--terminal-red); }
+        .log-type-warning { color: var(--terminal-amber); }
+        .log-type-tcp-message { color: #bd93f9; }
+        .log-type-udp-message { color: #50fa7b; }
+        
+        .server-card {
+            background: linear-gradient(145deg, #1e1e1e, #252525);
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        
+        .status-running { background-color: var(--terminal-green); box-shadow: 0 0 10px #00ff00; }
+        .status-stopped { background-color: #666; }
+        
+        .control-btn {
+            background-color: transparent;
+            border: 1px solid #333;
+            color: #e0e0e0;
+            padding: 8px 20px;
+            margin: 0 5px;
+            transition: all 0.3s;
+        }
+        
+        .control-btn:hover {
+            border-color: var(--terminal-green);
+            color: var(--terminal-green);
+        }
+        
+        .stats-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--terminal-green);
+        }
+        
+        .stats-label {
+            color: #888;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
