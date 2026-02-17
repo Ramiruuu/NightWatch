@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NightWatch - Logs</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/css/logs.css">
+</head>
+<body>
+    <div class="nav-bar">
+        <a href="/"><i class="bi bi-speedometer2"></i> Dashboard</a>
+        <a href="/logs" class="active"><i class="bi bi-journal-text"></i> Logs</a>
+        <a href="/settings"><i class="bi bi-gear"></i> Settings</a>
+        <span style="float: right; color: var(--terminal-green);">
+            <i class="bi bi-wifi"></i> <span id="connectionStatus">Connected</span>
+        </span>
+    </div>
+
+    <div class="logs-container">
+        <div class="logs-header">
+            <h2><i class="bi bi-journal-text me-2"></i>Connection Logs</h2>
+            <button class="export-btn" onclick="exportLogs()">
+                <i class="bi bi-download"></i> Export CSV
+            </button>
+        </div>
+
+        <!-- Statistics Summary -->
+        <div class="stats-box">
+            <div class="stat-item">
+                <div class="stat-label">Total Messages</div>
+                <div class="stat-value" id="totalMessages">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">TCP Messages</div>
+                <div class="stat-value" id="tcpCount">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">UDP Messages</div>
+                <div class="stat-value" id="udpCount">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Unique IPs</div>
+                <div class="stat-value" id="uniqueIPs">0</div>
+            </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+            <input type="text" class="search-box" placeholder="Search messages..." id="searchInput" onkeyup="filterLogs()">
+            
+            <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                <button class="filter-btn active" onclick="filterByType('all')" id="filter-all">All</button>
+                <button class="filter-btn" onclick="filterByType('tcp')" id="filter-tcp">TCP Only</button>
+                <button class="filter-btn" onclick="filterByType('udp')" id="filter-udp">UDP Only</button>
+                <button class="filter-btn" onclick="filterByType('system')" id="filter-system">System</button>
+                <button class="filter-btn" onclick="filterByType('error')" id="filter-error">Errors</button>
+            </div>
+            
+            <select class="search-box" style="width: auto;" onchange="changeLimit(this)">
+                <option value="50">50 per page</option>
+                <option value="100">100 per page</option>
+                <option value="200">200 per page</option>
+                <option value="500">500 per page</option>
+            </select>
+        </div>
+
+        <!-- Logs Table -->
+        <table class="logs-table">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Type</th>
+                    <th>Source</th>
+                    <th>Message</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="logsBody">
+                <!-- Filled by JavaScript -->
+            </tbody>
+        </table>
+
+        <!-- Pagination -->
+        <div class="pagination" id="pagination">
+            <button class="page-btn disabled" onclick="prevPage()" id="prevBtn">← Previous</button>
+            <span style="color: #888; padding: 5px;" id="pageInfo">Page 1 of 1</span>
+            <button class="page-btn disabled" onclick="nextPage()" id="nextBtn">Next →</button>
+        </div>
+    </div>
+
+    <script>
+        let currentLogs = [];
+        let filteredLogs = [];
+        let currentPage = 1;
+        let itemsPerPage = 50;
+        let currentFilter = 'all';
+        let currentSearch = '';
+
+        // Load logs on page load
+        window.onload = function() {
+            loadLogs();
+            // Auto-refresh every 5 seconds
+            setInterval(loadLogs, 5000);
+        };
+
+        function loadLogs() {
+            fetch('/api/messages?limit=1000')
+                .then(response => response.json())
+                .then(data => {
+                    currentLogs = data.messages || [];
+                    applyFilters();
+                    updateStats();
+                })
+                .catch(error => console.error('Error loading logs:', error));
+        }
+
+        function applyFilters() {
+            // Start with all logs
+            let filtered = [...currentLogs];
+            
+            // Apply type filter
+            if (currentFilter !== 'all') {
+                filtered = filtered.filter(log => {
+                    if (currentFilter === 'tcp') return log.message.includes('[TCP:');
+                    if (currentFilter === 'udp') return log.message.includes('[UDP:');
+                    if (currentFilter === 'system') return !log.message.includes('[');
+                    if (currentFilter === 'error') return log.message.toLowerCase().includes('error') || log.message.toLowerCase().includes('fail');
+                    return true;
+                });
+            }
+            
+            // Apply search filter
+            if (currentSearch) {
+                filtered = filtered.filter(log => 
+                    log.message.toLowerCase().includes(currentSearch.toLowerCase())
+                );
+            }
+            
+            filteredLogs = filtered;
+            currentPage = 1;
+            displayLogs();
+            updatePagination();
+        }
+
+        function displayLogs() {
+            const tbody = document.getElementById('logsBody');
+            const start = (currentPage - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            const pageLogs = filteredLogs.slice(start, end);
+            
+            tbody.innerHTML = '';
+            
+            if (pageLogs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 30px; color: #666;">No logs found</td></tr>';
+                return;
+            }
+            
+            pageLogs.forEach(log => {
+                const row = document.createElement('tr');
+                
+                // Determine type
+                let type = 'system';
+                let typeClass = 'type-system';
+                let source = 'System';
+                
+                if (log.message.includes('[TCP:')) {
+                    type = 'TCP';
+                    typeClass = 'type-tcp';
+                    const match = log.message.match(/\[TCP:(.*?)\]/);
+                    source = match ? match[1] : 'Unknown';
+                } else if (log.message.includes('[UDP:')) {
+                    type = 'UDP';
+                    typeClass = 'type-udp';
+                    const match = log.message.match(/\[UDP:(.*?)\]/);
+                    source = match ? match[1] : 'Unknown';
+                } else if (log.message.toLowerCase().includes('error')) {
+                    type = 'Error';
+                    typeClass = 'type-error';
+                }
+                
+                row.innerHTML = `
+                    <td class="log-timestamp">${log.timestamp || 'NOW'}</td>
+                    <td class="log-type"><span class="type-badge ${typeClass}">${type}</span></td>
+                    <td class="log-source">${source}</td>
+                    <td>${log.message.replace(/\[.*?\]\s*/, '')}</td>
+                    <td><button class="filter-btn" style="padding: 2px 5px;" onclick="copyMessage('${log.message.replace(/'/g, "\\'")}')"><i class="bi bi-clipboard"></i></button></td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        function updatePagination() {
+            const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
+            document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${totalPages || 1}`;
+            
+            document.getElementById('prevBtn').classList.toggle('disabled', currentPage === 1);
+            document.getElementById('nextBtn').classList.toggle('disabled', currentPage === totalPages || totalPages === 0);
+        }
+
+        function updateStats() {
+            const tcpCount = currentLogs.filter(l => l.message.includes('[TCP:')).length;
+            const udpCount = currentLogs.filter(l => l.message.includes('[UDP:')).length;
+            
+            // Count unique IPs
+            const ips = new Set();
+            currentLogs.forEach(l => {
+                const tcpMatch = l.message.match(/\[TCP:(.*?)\]/);
+                const udpMatch = l.message.match(/\[UDP:(.*?)\]/);
+                if (tcpMatch) ips.add(tcpMatch[1]);
+                if (udpMatch) ips.add(udpMatch[1]);
+            });
+            
+            document.getElementById('totalMessages').textContent = currentLogs.length;
+            document.getElementById('tcpCount').textContent = tcpCount;
+            document.getElementById('udpCount').textContent = udpCount;
+            document.getElementById('uniqueIPs').textContent = ips.size;
+        }
+
+        function filterByType(type) {
+            currentFilter = type;
+            
+            // Update active button
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`filter-${type}`).classList.add('active');
+            
+            applyFilters();
+        }
+
+        function filterLogs() {
+            currentSearch = document.getElementById('searchInput').value;
+            applyFilters();
+        }
+
+        function changeLimit(select) {
+            itemsPerPage = parseInt(select.value);
+            currentPage = 1;
+            displayLogs();
+            updatePagination();
+        }
+
+        function nextPage() {
+            const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                displayLogs();
+                updatePagination();
+            }
+        }
+
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                displayLogs();
+                updatePagination();
+            }
+        }
+
+        function exportLogs() {
+            let csv = 'Timestamp,Type,Source,Message\n';
+            
+            currentLogs.forEach(log => {
+                let type = 'System';
+                let source = '-';
+                let message = log.message;
+                
+                if (log.message.includes('[TCP:')) {
+                    type = 'TCP';
+                    const match = log.message.match(/\[TCP:(.*?)\]/);
+                    source = match ? match[1] : '-';
+                    message = message.replace(/\[TCP:.*?\]\s*/, '');
+                } else if (log.message.includes('[UDP:')) {
+                    type = 'UDP';
+                    const match = log.message.match(/\[UDP:(.*?)\]/);
+                    source = match ? match[1] : '-';
+                    message = message.replace(/\[UDP:.*?\]\s*/, '');
+                }
+                
+                csv += `"${log.timestamp || 'NOW'}",${type},"${source}","${message.replace(/"/g, '""')}"\n`;
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `nightwatch_logs_${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+        }
+
+        function copyMessage(msg) {
+            navigator.clipboard.writeText(msg);
+            alert('Message copied to clipboard!');
+        }
+    </script>
+</body>
+</html>
